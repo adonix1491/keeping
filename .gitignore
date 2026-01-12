@@ -1,0 +1,19 @@
+# Expo
+.expo/
+dist/
+web-build/
+node_modules/
+.DS_Store
+
+# Keys and Secrets
+*.jks
+*.keystore
+*.pem
+
+# Backend / Python
+backend/__pycache__/
+*.pyc
+*.db
+waitlist.db
+venv/
+.env

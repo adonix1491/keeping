@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satisfying Escape Loop V2</title>
+    <style>
+        :root {
+            --bg-color: #111;
+            --text-color: #fff;
+            --panel-bg: rgba(30, 30, 30, 0.9);
+            --accent-color: #00d2ff;
+            --ring-color: #fff;
+        }
+
+        body.day-mode {
+            --bg-color: #f0f2f5;
+            --text-color: #333;
+            --panel-bg: rgba(255, 255, 255, 0.95);
+            --accent-color: #ff4757;
+            --ring-color: #2c3e50;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            transition: background-color 0.3s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* 遊戲畫布 */
+        canvas {
+            display: block;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            outline: none;
+            /*移除聚焦藍框*/
+        }
+
+        /* 控制面板 */
+        .ui-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 260px;
+            background: var(--panel-bg);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(128, 128, 128, 0.3);
+            z-index: 10;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        h2 {
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            color: var(--accent-color);
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        /* 關卡按鈕網格 */
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+        }
+
+        .level-btn {
+            background: transparent;
+            border: 1px solid var(--text-color);
+            color: var(--text-color);
+            padding: 6px 0;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0.6;
+        }
+
+        .level-btn:hover {
+            opacity: 1;
+        }
+
+        .level-btn.active {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #fff;
+            opacity: 1;
+            font-weight: bold;
+        }
+
+        /* 功能按鈕 */
+        .action-btn {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            background: var(--accent-color);
+            color: #fff;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .action-btn.record-btn {
+            background: #e74c3c;
+        }
+
+        .action-btn.recording {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .action-btn:active {
+            transform: scale(0.98);
+        }
+
+        .toggle-switch {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        .theme-btn {
+            background: #555;
+            color: #fff;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* 開始遮罩 (修復瀏覽器阻擋問題) */
+        #startOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            color: white;
+        }
+
+        #startBtn {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: var(--accent-color);
+            border: none;
+            border-radius: 50px;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 0 20px var(--accent-color);
+            transition: transform 0.2s;
+        }
+
+        #startBtn:hover {
+            transform: scale(1.1);
+        }
+
+        /* 按鍵可視化顯示 */
+        .key-pad {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            pointer-events: none;
+            /* 不干擾操作 */
+            opacity: 0.7;
+        }
+
+        .key-row {
+            display: flex;
+            gap: 5px;
+        }
+
+        .key {
+            width: 40px;
+            height: 40px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 20px;
+            color: rgba(255, 255, 255, 0.5);
+            background: rgba(0, 0, 0, 0.3);
+            transition: all 0.1s;
+        }
+
+        .key.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="startOverlay">
+        <h1>🔴 迴圈逃脫實驗室</h1>
+        <p>點擊下方按鈕開始遊戲</p>
+        <button id="startBtn">START GAME</button>
+    </div>
+
+    <!-- UI Panel -->
+    <div class="ui-panel">
+        <h2>⚙️ 設定面板</h2>
+
+        <div class="control-group">
+            <label>選擇關卡 (Level Preview)</label>
+            <div class="level-grid" id="levelContainer">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>自訂球體圖片</label>
+            <input type="file" id="uploadImage" accept="image/*" style="font-size: 11px; width: 100%;">
+        </div>
+
+        <div class="control-group">
+            <label style="display: flex; justify-content: space-between;">球體大小 (Size) <span
+                    id="sizeVal">14</span></label>
+            <input type="range" id="sizeRange" min="5" max="30" step="1" value="14" style="width: 100%;">
+        </div>
+
+        <button class="action-btn" onclick="resetBall()">重置球體位置</button>
+        <button class="action-btn" onclick="toggleAspectRatio()">切換 9:16 視圖</button>
+        <button class="action-btn" id="clipBtn" onclick="toggleClip()">✂️ 圓形裁切: ON</button>
+        <button class="action-btn record-btn" id="recordBtn" onclick="toggleRecording()">⏺️ 開始錄製 (MP4)</button>
+
+        <div class="toggle-switch">
+            <span>顯示模式</span>
+            <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙 切換</button>
+        </div>
+
+        <div style="font-size: 11px; color: #aaa; margin-top: 10px; text-align: center;">
+            ⌨️ 支援方向鍵與 WASD
+        </div>
+    </div>
+
+    <!-- Key Visualizer -->
+    <div class="key-pad">
+        <div class="key-row">
+            <div class="key" id="k-up">↑</div>
+        </div>
+        <div class="key-row">
+            <div class="key" id="k-left">←</div>
+            <div class="key" id="k-down">↓</div>
+            <div class="key" id="k-right">→</div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas" tabindex="0"></canvas>
+
+    <script>
+        // --- 變數宣告 ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width, height, centerX, centerY;
+        let isDayMode = false;
+        let ballImage = null;
+        let isRunning = false;
+        let audioCtx = null;
+        let is916Mode = false;
+        let isImageClipped = true; // Default to clipped
+
+        // 錄影相關
+        let mediaRecorder;
+        let recordedChunks = [];
+        let isRecording = false;
+
+        // 物理參數
+        const gravity = 0.25;
+        const friction = 0.99;
+        const bounce = 0.85;
+
+        // 球體狀態
+        const ball = { x: 0, y: 0, vx: 0, vy: 0, radius: 14, color: '#ff4757' };
+
+        // 鍵盤控制狀態
+        const keys = {
+            ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false,
+            KeyW: false, KeyS: false, KeyA: false, KeyD: false
+        };
+
+        // 關卡設定
+        const levels = [
+            { id: 0, name: "1", rings: [{ r: 200, s: 0.015, g: 1.4, t: 12 }] },
+            { id: 1, name: "2", rings: [{ r: 160, s: 0.02, g: 1.2, t: 10 }, { r: 240, s: -0.015, g: 1.2, t: 10 }] },
+            { id: 2, name: "3", rings: [{ r: 120, s: 0.02, g: 1.0, t: 8 }, { r: 190, s: -0.02, g: 1.0, t: 8 }, { r: 260, s: 0.01, g: 1.0, t: 8 }] },
+            { id: 3, name: "4", rings: [{ r: 150, s: 0.04, g: 0.8, t: 15 }, { r: 250, s: -0.03, g: 0.9, t: 15 }] },
+            { id: 4, name: "5", rings: [{ r: 100, s: 0.01, g: 1.5, t: 5 }, { r: 140, s: -0.01, g: 1.4, t: 5 }, { r: 180, s: 0.01, g: 1.3, t: 5 }, { r: 220, s: -0.01, g: 1.2, t: 5 }] },
+            { id: 5, name: "6", rings: [{ r: 150, s: 0.06, g: 0.6, t: 6 }, { r: 280, s: -0.005, g: 0.4, t: 25 }] },
+            // New Complex Levels
+            { id: 6, name: "7🌀", rings: Array.from({ length: 8 }, (_, i) => ({ r: 80 + i * 25, s: (i % 2 == 0 ? 0.02 : -0.02) * (1 + i * 0.1), g: 0.8, t: 8 })) },
+            { id: 7, name: "8🧱", rings: [{ r: 100, s: 0.03, g: 0.5, t: 20 }, { r: 180, s: -0.02, g: 0.6, t: 30 }, { r: 260, s: 0.01, g: 0.8, t: 40 }] },
+            { id: 8, name: "9🚀", rings: [{ r: 120, s: 0.08, g: 1.2, t: 5 }, { r: 160, s: -0.07, g: 1.1, t: 5 }, { r: 200, s: 0.06, g: 1.0, t: 5 }, { r: 240, s: -0.05, g: 0.9, t: 5 }] },
+            { id: 9, name: "10🎯", rings: [{ r: 130, s: 0.01, g: 0.3, t: 10 }, { r: 180, s: -0.01, g: 0.3, t: 12 }, { r: 230, s: 0.01, g: 0.3, t: 14 }] },
+            { id: 10, name: "11🎲", rings: [{ r: 100, s: 0.05, g: 1.0, t: 8 }, { r: 200, s: -0.08, g: 0.5, t: 5 }, { r: 250, s: 0.02, g: 1.5, t: 20 }] },
+            { id: 11, name: "12☠️", rings: Array.from({ length: 6 }, (_, i) => ({ r: 90 + i * 35, s: (i % 2 == 0 ? 0.03 : -0.03) + (Math.random() * 0.02), g: 0.7 - i * 0.05, t: 10 })) }
+        ];
+
+        let activeRings = [];
+        let currentLevelIdx = 0;
+
+        // --- 初始化 ---
+        function init() {
+            resize();
+            window.addEventListener('resize', resize);
+            window.addEventListener('keydown', handleKeyDown);
+            window.addEventListener('keyup', handleKeyUp);
+            createLevelButtons();
+            loadLevel(0);
+            draw();
+
+            // 讓 Canvas 預設聚焦以便接收按鍵
+            canvas.focus();
+        }
+
+        // 點擊開始按鈕
+        document.getElementById('startBtn').addEventListener('click', () => {
+            document.getElementById('startOverlay').style.display = 'none';
+            isRunning = true;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            resetBall();
+            update();
+            canvas.focus(); // 確保開始時聚焦
+        });
+
+        // 調整視窗大小邏輯
+        function resize() {
+            if (is916Mode) {
+                const h = window.innerHeight * 0.9;
+                const w = h * (9 / 16);
+                canvas.width = w;
+                canvas.height = h;
+                canvas.style.width = `${w}px`;
+                canvas.style.height = `${h}px`;
+            } else {
+                width = window.innerWidth;
+                height = window.innerHeight;
+                canvas.width = width;
+                canvas.height = height;
+                canvas.style.width = '100vw';
+                canvas.style.height = '100vh';
+            }
+
+            centerX = canvas.width / 2;
+            centerY = canvas.height / 2;
+            if (!isRunning) draw();
+        }
+
+        function toggleAspectRatio() {
+            is916Mode = !is916Mode;
+            resize();
+            resetBall();
+        }
+
+        // --- 錄影功能 ---
+        function toggleRecording() {
+            const btn = document.getElementById('recordBtn');
+
+            if (!isRecording) {
+                const stream = canvas.captureStream(60);
+                const options = MediaRecorder.isTypeSupported('video/mp4')
+                    ? { mimeType: 'video/mp4', videoBitsPerSecond: 5000000 }
+                    : { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 5000000 };
+
+                try {
+                    mediaRecorder = new MediaRecorder(stream, options);
+                } catch (e) {
+                    mediaRecorder = new MediaRecorder(stream);
+                }
+
+                recordedChunks = [];
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) recordedChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = saveVideo;
+                mediaRecorder.start();
+
+                isRecording = true;
+                btn.innerText = "⏹️ 停止錄製";
+                btn.classList.add('recording');
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                btn.innerText = "⏺️ 開始錄製 (MP4)";
+                btn.classList.remove('recording');
+            }
+        }
+
+        function saveVideo() {
+            const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const ext = mediaRecorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
+            a.download = `loop_escape_recording_${Date.now()}.${ext}`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // --- 鍵盤控制 ---
+        function handleKeyDown(e) {
+            keys[e.code] = true;
+            updateKeyVisuals();
+            // 防止方向鍵捲動網頁
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+                e.preventDefault();
+            }
+        }
+
+        function handleKeyUp(e) {
+            keys[e.code] = false;
+            updateKeyVisuals();
+        }
+
+        let lastSoundTime = 0;
+
+        function updateKeyVisuals() {
+            const set = (id, active) => document.getElementById(id).classList.toggle('active', active);
+            set('k-up', keys['ArrowUp'] || keys['KeyW']);
+            set('k-down', keys['ArrowDown'] || keys['KeyS']);
+            set('k-left', keys['ArrowLeft'] || keys['KeyA']);
+            set('k-right', keys['ArrowRight'] || keys['KeyD']);
+        }
+
+        // Audio Destination for Recording
+        let dest = null;
+
+        function playSound(velocity) {
+            const now = Date.now();
+            if (now - lastSoundTime < 50) return; // 50ms Cooldown
+            lastSoundTime = now;
+
+            if (!audioCtx || audioCtx.state === 'suspended') return;
+
+            // Lazy init dest node
+            if (!dest) {
+                dest = audioCtx.createMediaStreamDestination();
+            }
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const val = Math.min(velocity * 40, 800);
+
+            osc.frequency.setValueAtTime(200 + val, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination); // For speakers
+            gain.connect(dest); // For recording
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        // --- 錄影功能 ---
+        function toggleRecording() {
+            const btn = document.getElementById('recordBtn');
+
+            if (!isRecording) {
+                // Video Stream
+                const canvasStream = canvas.captureStream(60);
+
+                // Audio Stream (if available)
+                let finalStream = canvasStream;
+                if (audioCtx && dest) {
+                    const audioTracks = dest.stream.getAudioTracks();
+                    if (audioTracks.length > 0) {
+                        finalStream = new MediaStream([...canvasStream.getVideoTracks(), ...audioTracks]);
+                    }
+                }
+
+                // Prioritize H.264 + AAC for Windows compatibility
+                const mimeTypes = [
+                    'video/mp4; codecs="avc1.424028, mp4a.40.2"', // H.264 + AAC (High Profile)
+                    'video/mp4; codecs="avc1.42E01E, mp4a.40.2"', // H.264 + AAC (Main Profile)
+                    'video/mp4',
+                    'video/webm; codecs=vp9,opus',
+                    'video/webm'
+                ];
+
+                let selectedMime = '';
+                for (const mime of mimeTypes) {
+                    if (MediaRecorder.isTypeSupported(mime)) {
+                        selectedMime = mime;
+                        break;
+                    }
+                }
+
+                // Fallback options if specific checks fail
+                let options = { videoBitsPerSecond: 5000000 };
+                if (selectedMime) options.mimeType = selectedMime;
+
+                try {
+                    mediaRecorder = new MediaRecorder(finalStream, options);
+                } catch (e) {
+                    console.warn('Init failed with ' + selectedMime + ', fallback to default');
+                    mediaRecorder = new MediaRecorder(finalStream);
+                }
+
+                recordedChunks = [];
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) recordedChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = saveVideo;
+                mediaRecorder.start();
+
+                isRecording = true;
+                btn.innerText = "⏹️ 停止錄製";
+                btn.classList.add('recording');
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                btn.innerText = "⏺️ 開始錄製 (MP4)";
+                btn.classList.remove('recording');
+            }
+        }
+
+        function createLevelButtons() {
+            const container = document.getElementById('levelContainer');
+            container.innerHTML = '';
+            levels.forEach((lvl, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'level-btn';
+                if (idx === 0) btn.classList.add('active');
+                btn.innerText = lvl.name;
+                btn.onclick = () => loadLevel(idx);
+                container.appendChild(btn);
+            });
+        }
+
+        function loadLevel(index) {
+            currentLevelIdx = index;
+            document.querySelectorAll('.level-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+            });
+            activeRings = levels[index].rings.map(config => ({
+                radius: config.r,
+                speed: config.s,
+                gap: config.g,
+                thickness: config.t,
+                angle: Math.random() * Math.PI * 2,
+                maxHp: 10,
+                hp: 10
+            }));
+            resetBall();
+            if (!isRunning) draw();
+        }
+
+        function resetBall() {
+            ball.x = centerX;
+            ball.y = centerY - 30;
+            ball.vx = (Math.random() - 0.5) * 5;
+            ball.vy = 0;
+        }
+
+        function spawnNewRing(targetRadius) {
+            let radius = targetRadius;
+
+            // If no target radius (e.g. fallback), find max and add to it (original behavior, just in case)
+            if (!radius) {
+                let maxR = 0;
+                activeRings.forEach(r => maxR = Math.max(maxR, r.radius));
+                if (maxR === 0) maxR = 100;
+                radius = maxR + 40;
+            }
+
+            const baseConfig = levels[currentLevelIdx].rings[0] || { s: 0.02, g: 1.0, t: 10 };
+
+            // Generate new ring at the recycling radius
+            const newRing = {
+                radius: radius,
+                speed: baseConfig.s * (Math.random() > 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.4),
+                gap: Math.max(0.5, Math.min(2.0, baseConfig.g * (0.9 + Math.random() * 0.2))),
+                thickness: baseConfig.t,
+                angle: Math.random() * Math.PI * 2,
+                maxHp: 10,
+                hp: 10
+            };
+            activeRings.push(newRing);
+            // Sort to ensure proper rendering order
+            activeRings.sort((a, b) => a.radius - b.radius);
+        }
+
+        function applyControls() {
+            // 增加推力以確保明顯
+            const force = 0.8;
+            if (keys['ArrowUp'] || keys['KeyW']) ball.vy -= force;
+            if (keys['ArrowDown'] || keys['KeyS']) ball.vy += force;
+            if (keys['ArrowLeft'] || keys['KeyA']) ball.vx -= force;
+            if (keys['ArrowRight'] || keys['KeyD']) ball.vx += force;
+        }
+
+        // --- Main Loop ---
+        function update() {
+            if (!isRunning) return;
+
+            applyControls();
+
+            // 物理運算
+            ball.vy += gravity;
+            ball.vx *= friction;
+            ball.vy *= friction;
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            // 碰撞檢測
+            const dist = Math.hypot(ball.x - centerX, ball.y - centerY);
+            const ballAngle = Math.atan2(ball.y - centerY, ball.x - centerX);
+
+            activeRings.forEach(ring => {
+                ring.angle += ring.speed;
+
+                const halfThick = ring.thickness / 2;
+                if (dist > ring.radius - halfThick - ball.radius &&
+                    dist < ring.radius + halfThick + ball.radius) {
+
+                    let angleDiff = angleDifference(ballAngle, ring.angle);
+
+                    if (Math.abs(angleDiff) > ring.gap / 2) {
+                        const nx = (ball.x - centerX) / dist;
+                        const ny = (ball.y - centerY) / dist;
+                        const dot = ball.vx * nx + ball.vy * ny;
+                        ball.vx = (ball.vx - 2 * dot * nx) * bounce;
+                        ball.vy = (ball.vy - 2 * dot * ny) * bounce;
+                        const overlap = (ball.radius + halfThick) - Math.abs(dist - ring.radius);
+                        if (overlap > 0) {
+                            const pushDir = dist < ring.radius ? -1 : 1;
+                            ball.x += nx * overlap * pushDir;
+                            ball.y += ny * overlap * pushDir;
+
+                            // Damage Logic
+                            ring.hp--;
+                        }
+                        playSound(Math.hypot(ball.vx, ball.vy));
+                    }
+                }
+            });
+
+            // Remove destroyed rings and spawn new ones
+            for (let i = activeRings.length - 1; i >= 0; i--) {
+                if (activeRings[i].hp <= 0) {
+                    const deadRadius = activeRings[i].radius;
+                    activeRings.splice(i, 1);
+
+                    // Delay regeneration by 2 seconds
+                    const capturedLevel = currentLevelIdx;
+                    setTimeout(() => {
+                        if (currentLevelIdx === capturedLevel && isRunning) {
+                            spawnNewRing(deadRadius);
+                        }
+                    }, 2000);
+                }
+            }
+
+            if (ball.y > canvas.height + 200 || ball.y < -200) resetBall();
+
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        function draw() {
+            ctx.fillStyle = isDayMode ? 'rgba(240, 242, 245, 0.25)' : 'rgba(17, 17, 17, 0.25)';
+            if (!isRunning) ctx.fillStyle = isDayMode ? '#f0f2f5' : '#111';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.lineCap = 'round';
+            activeRings.forEach(ring => {
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(ring.angle);
+                ctx.beginPath();
+                ctx.arc(0, 0, ring.radius, ring.gap / 2, Math.PI * 2 - ring.gap / 2);
+
+                // Color based on HP
+                if (isDayMode) {
+                    const lightness = 20 + (ring.hp / ring.maxHp) * 30; // 20% to 50%
+                    ctx.strokeStyle = `hsl(210, 30%, ${lightness}%)`;
+                } else {
+                    // Full HP = White. Low HP = Reddish.
+                    const sat = (1 - ring.hp / ring.maxHp) * 100;
+                    const light = 50 + (ring.hp / ring.maxHp) * 50;
+                    ctx.strokeStyle = `hsl(0, ${sat}%, ${light}%)`;
+                }
+
+                ctx.lineWidth = ring.thickness;
+                if (!isDayMode) {
+                    ctx.shadowBlur = 10 * (ring.hp / ring.maxHp);
+                    ctx.shadowColor = ctx.strokeStyle;
+                }
+                ctx.stroke();
+                ctx.restore();
+            });
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            if (ballImage) {
+                if (isImageClipped) ctx.clip();
+                ctx.drawImage(ballImage, ball.x - ball.radius, ball.y - ball.radius, ball.radius * 2, ball.radius * 2);
+            } else {
+                ctx.fillStyle = ball.color;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = ball.color;
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function toggleClip() {
+            isImageClipped = !isImageClipped;
+            const btn = document.getElementById('clipBtn');
+            btn.innerText = isImageClipped ? "✂️ 圓形裁切: ON" : "✂️ 圓形裁切: OFF";
+            if (!isRunning) draw();
+        }
+
+        function angleDifference(a1, a2) {
+            let diff = (a1 - a2 + Math.PI) % (Math.PI * 2) - Math.PI;
+            if (diff < -Math.PI) diff += Math.PI * 2;
+            return diff;
+        }
+
+        window.toggleTheme = function () {
+            isDayMode = !isDayMode;
+            document.body.classList.toggle('day-mode', isDayMode);
+            if (!ballImage) ball.color = isDayMode ? '#ff4757' : '#00d2ff';
+            if (!isRunning) draw();
+        };
+
+        document.getElementById('uploadImage').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const img = new Image();
+                img.onload = () => {
+                    ballImage = img;
+                    if (!isRunning) draw();
+                };
+                img.src = evt.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('sizeRange').addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            ball.radius = val;
+            document.getElementById('sizeVal').innerText = val;
+            if (!isRunning) draw();
+        });
+
+        window.onload = init;
+
+    </script>
+</body>
+
+</html>
