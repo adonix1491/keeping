@@ -44,5 +44,21 @@ export const api = {
                 resolve(true);
             }, 500);
         });
+    },
+
+    getAvailability: async (restaurantId: string, date: string, partySize: number): Promise<{ time: string, status: 'AVAILABLE' | 'FULL' }[]> => {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                // Mock logic: randomly assign status
+                const slots = ['11:30', '12:00', '13:30', '17:30', '18:00', '18:30', '19:00', '19:30'];
+                const result = slots.map(time => ({
+                    time,
+                    status: Math.random() > 0.6 ? 'AVAILABLE' : 'FULL'
+                }));
+                // Force at least one FULL for demo
+                result[0].status = 'FULL';
+                resolve(result as any);
+            }, 600);
+        });
     }
 };

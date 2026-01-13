@@ -8,16 +8,17 @@ interface BookingSheetProps {
     visible: boolean;
     onClose: () => void;
     restaurant: Restaurant;
+    preSelectedDate?: string;
 }
 
-export function BookingSheet({ visible, onClose, restaurant }: BookingSheetProps) {
+export function BookingSheet({ visible, onClose, restaurant, preSelectedDate }: BookingSheetProps) {
     const [loading, setLoading] = useState(false);
 
     const handleSubscribe = async () => {
         setLoading(true);
         try {
-            // Simulate API call
-            await api.addToWatchlist(restaurant.id, new Date().toISOString(), 2);
+            // Simulate API call using the specific date if provided
+            await api.addToWatchlist(restaurant.id, preSelectedDate || new Date().toISOString(), 2);
             Alert.alert('成功', '已加入監控清單');
             onClose();
         } catch (e) {
@@ -49,7 +50,7 @@ export function BookingSheet({ visible, onClose, restaurant }: BookingSheetProps
                         </View>
                         <View style={styles.row}>
                             <Text style={styles.label}>日期</Text>
-                            <Text style={styles.value}>Anytime</Text>
+                            <Text style={styles.value}>{preSelectedDate ? preSelectedDate : 'Anytime'}</Text>
                         </View>
                         <View style={styles.row}>
                             <Text style={styles.label}>人數</Text>
