@@ -16,10 +16,13 @@ export default function RestaurantDetailScreen() {
     // New State
     const [selectedDate, setSelectedDate] = useState(() => {
         const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
         return {
             label: `${d.getMonth() + 1}/${d.getDate()}`,
             day: ['日', '一', '二', '三', '四', '五', '六'][d.getDay()],
-            fullDate: d.toISOString().split('T')[0]
+            fullDate: `${year}-${month}-${day}`
         };
     });
     const [slots, setSlots] = useState<{ time: string, status: 'AVAILABLE' | 'FULL' }[]>([]);
@@ -168,6 +171,13 @@ const getMonthData = (year: number, month: number) => {
     return days;
 };
 
+const formatDateLocal = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 const renderCalendar = (baseDate: Date, selected: any, onSelect: any) => {
     const year = baseDate.getFullYear();
     const month = baseDate.getMonth();
@@ -185,9 +195,9 @@ const renderCalendar = (baseDate: Date, selected: any, onSelect: any) => {
                 {days.map((date, i) => {
                     if (!date) return <View key={i} style={styles.dayCell} />;
 
-                    const dateStr = date.toISOString().split('T')[0];
+                    const dateStr = formatDateLocal(date);
                     const isSelected = selected.fullDate === dateStr;
-                    const isToday = dateStr === new Date().toISOString().split('T')[0];
+                    const isToday = dateStr === formatDateLocal(new Date());
                     const isPast = date < new Date() && !isToday;
 
                     return (
