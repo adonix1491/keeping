@@ -3,7 +3,7 @@ import os
 import psycopg2
 
 # Vercel Postgres URL
-DATABASE_URL = os.environ.get('POSTGRES_URL')
+DATABASE_URL = os.environ.get('POSTGRES_URL') # Auto-injected by Vercel
 
 def setup_postgres():
     if not DATABASE_URL:
