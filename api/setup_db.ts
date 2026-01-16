@@ -1,3 +1,4 @@
+// Setup Database Handler (Node.js)
 import { sql } from '@vercel/postgres';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 
