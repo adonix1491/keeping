@@ -1,4 +1,5 @@
 import { RESTAURANTS, Restaurant, WATCHLIST, WatchlistItem } from './mockData';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const DELAY_MS = 800;
 
@@ -29,12 +30,40 @@ export const api = {
     },
 
     addToWatchlist: async (restaurantId: string, date: string, partySize: number): Promise<boolean> => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                console.log(`Added to watchlist: ${restaurantId}, ${date}, ${partySize} pax`);
-                resolve(true);
-            }, DELAY_MS);
-        });
+        try {
+            // Get User ID
+            const userId = await AsyncStorage.getItem('LINE_USER_ID');
+            if (!userId) {
+                alert('請先至設定頁面輸入 LINE User ID');
+                return false;
+            }
+
+            const restaurant = RESTAURANTS.find(r => r.id === restaurantId);
+            if (!restaurant) throw new Error('Restaurant not found');
+
+            const response = await fetch('/api/watchlist', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId: userId,
+                    restaurantId: restaurantId,
+                    bookingUrl: restaurant.bookingUrl,
+                    targetDate: date,
+                    partySize: partySize
+                }),
+            });
+
+            if (response.ok) {
+                console.log(`Added to watchlist: ${restaurant.name}`);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('API Error:', error);
+            return false;
+        }
     },
 
     deleteFromWatchlist: async (id: string): Promise<boolean> => {
