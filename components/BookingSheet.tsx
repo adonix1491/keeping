@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, ActivityIndicator, Alert, Linking } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { Restaurant } from '../services/mockData';
 import { api } from '../services/api';
@@ -70,7 +70,10 @@ export function BookingSheet({ visible, onClose, restaurant, preSelectedDate }: 
                         )}
                     </Pressable>
 
-                    <Pressable style={styles.lineButton}>
+                    <Pressable
+                        style={styles.lineButton}
+                        onPress={() => Linking.openURL('https://line.me/R/ti/p/@622ykcgu')}
+                    >
                         <Text style={styles.lineButtonText}>📲 綁定 LINE 接收通知</Text>
                     </Pressable>
                 </View>

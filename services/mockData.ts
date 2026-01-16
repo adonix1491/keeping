@@ -114,7 +114,7 @@ export const RESTAURANTS: Restaurant[] = [
     {
         id: '208',
         name: '屋馬燒肉 中港店',
-        image: 'https://placehold.co/600x400?text=Umai+Zhonggang',
+        image: 'https://inline.imgix.net/branch/-Kbsjto8qbSr0Yza-1gk:inline-live-wuma--KbyW5SxxkVi6Bf3dk8X-1520a59e-38d1-4c93-9039-57b96dab9e3c.JPG?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
         location: '台中市',
         rating: 4.8,
         status: 'FULL',
