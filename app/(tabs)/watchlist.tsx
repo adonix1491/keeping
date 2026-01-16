@@ -86,7 +86,7 @@ export default function WatchlistScreen() {
                 contentContainerStyle={styles.list}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                 ListEmptyComponent={
-                    !loading && <Text style={styles.emptyText}>目前沒有正在監控的餐廳</Text>
+                    !loading ? <Text style={styles.emptyText}>目前沒有正在監控的餐廳</Text> : null
                 }
             />
         </SafeAreaView>
