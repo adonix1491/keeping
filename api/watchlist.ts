@@ -1,5 +1,6 @@
 import { sql } from '@vercel/postgres';
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import * as line from '@line/bot-sdk';
 
 function parseInlineUrl(url: string) {
     try {
@@ -58,6 +59,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             INSERT INTO tasks (user_id, restaurant_id, target_date, party_size, status) 
             VALUES (${userId}, ${restaurantId}, ${targetDate}, ${partySize}, 'PENDING');
         `;
+
+        // 3. Send LINE Confirmation
+        const lineConfig = {
+            channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
+            channelSecret: process.env.LINE_CHANNEL_SECRET || '',
+        };
+        const lineClient = new line.Client(lineConfig);
+
+        try {
+            await lineClient.pushMessage(userId, {
+                type: 'text',
+                text: `✅ 預約監控已建立！\n\n日期時段：${targetDate}\n人數：${partySize} 位\n\n系統正在為您監控空位，一旦有釋出將會立即發送通知給您！🚀`,
+            });
+        } catch (err) {
+            console.error('Failed to send LINE confirmation:', err);
+        }
 
         res.status(200).json({ success: true });
 
