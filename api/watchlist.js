@@ -19,8 +19,10 @@ function parseInlineUrl(url) {
 }
 
 module.exports = async (req, res) => {
+    const method = req.method ? req.method.toUpperCase() : 'UNKNOWN';
+
     // GET: List Tasks
-    if (req.method === 'GET') {
+    if (method === 'GET') {
         const userId = req.query.userId;
         if (!userId) {
             return res.status(400).json({ error: 'User ID required' });
@@ -59,7 +61,7 @@ module.exports = async (req, res) => {
     }
 
     // POST: Add Task
-    if (req.method === 'POST') {
+    if (method === 'POST') {
         try {
             const { userId, bookingUrl, targetDate, partySize } = req.body;
 
@@ -119,5 +121,10 @@ module.exports = async (req, res) => {
         }
     }
 
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    // Debug: Return method received
+    return res.status(405).json({
+        error: 'Method Not Allowed',
+        received_method: method,
+        debug_tip: 'Check if you are sending the right method'
+    });
 };
