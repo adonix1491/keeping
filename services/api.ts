@@ -30,12 +30,13 @@ export const api = {
     },
 
     getRestaurantById: async (id: string): Promise<Restaurant | undefined> => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                const restaurant = RESTAURANTS.find((r) => r.id === id);
-                resolve(restaurant);
-            }, DELAY_MS);
-        });
+        try {
+            const restaurants = await api.getRestaurants();
+            return restaurants.find((r) => r.id === id);
+        } catch (e) {
+            console.error('Failed to get restaurant by id:', e);
+            return undefined;
+        }
     },
 
     getWatchlist: async (): Promise<WatchlistItem[]> => {
@@ -99,18 +100,17 @@ export const api = {
     },
 
     getAvailability: async (restaurantId: string, date: string, partySize: number): Promise<{ time: string, status: 'AVAILABLE' | 'FULL' }[]> => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                // Mock logic: randomly assign status
-                const slots = ['11:30', '12:00', '13:30', '17:30', '18:00', '18:30', '19:00', '19:30'];
-                const result = slots.map(time => ({
-                    time,
-                    status: Math.random() > 0.6 ? 'AVAILABLE' : 'FULL'
-                }));
-                // Force at least one FULL for demo
-                result[0].status = 'FULL';
-                resolve(result as any);
-            }, 600);
-        });
+        try {
+            const response = await fetch(
+                `${API_BASE_URL}/api/availability?restaurantId=${restaurantId}&date=${date}&partySize=${partySize}`
+            );
+            if (!response.ok) throw new Error('Failed to fetch availability');
+            const data = await response.json();
+            return data.slots || [];
+        } catch (e) {
+            console.error('Failed to fetch availability:', e);
+            // Return empty slots on error
+            return [];
+        }
     }
 };
