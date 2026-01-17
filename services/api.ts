@@ -22,11 +22,19 @@ export const api = {
     },
 
     getWatchlist: async (): Promise<WatchlistItem[]> => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                resolve(WATCHLIST);
-            }, DELAY_MS);
-        });
+        try {
+            const userId = await AsyncStorage.getItem('LINE_USER_ID');
+            if (!userId) return [];
+
+            const response = await fetch(`/api/watchlist?userId=${userId}`);
+            if (!response.ok) return [];
+
+            const data = await response.json();
+            return data;
+        } catch (e) {
+            console.error('Failed to fetch watchlist:', e);
+            return [];
+        }
     },
 
     addToWatchlist: async (restaurantId: string, date: string, partySize: number): Promise<boolean> => {

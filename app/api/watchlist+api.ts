@@ -18,6 +18,46 @@ function parseInlineUrl(url: string) {
     return null;
 }
 
+export async function GET(request: Request) {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+
+    if (!userId) {
+        return Response.json({ error: 'User ID required' }, { status: 400 });
+    }
+
+    try {
+        const { rows } = await sql`
+        SELECT 
+            t.id, 
+            t.restaurant_id, 
+            r.name as restaurant_name, 
+            t.target_date, 
+            t.party_size, 
+            t.status
+        FROM tasks t
+        JOIN restaurants r ON t.restaurant_id = r.id
+        WHERE t.user_id = ${userId} OR t.line_user_id = ${userId}
+        ORDER BY t.created_at DESC
+        `;
+
+        const items = rows.map(row => ({
+            id: row.id.toString(),
+            restaurantId: row.restaurant_id.toString(),
+            restaurantName: row.restaurant_name,
+            targetDate: row.target_date,
+            partySize: row.party_size,
+            status: row.status === 'NOTIFIED' ? 'FOUND' : 'LOADING', // Map DB status to UI status
+            foundSlot: row.status === 'NOTIFIED' ? 'Check LINE' : undefined
+        }));
+
+        return Response.json(items);
+    } catch (error) {
+        console.error(error);
+        return Response.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
 export async function POST(request: Request) {
     try {
         const { userId, bookingUrl, targetDate, partySize } = await request.json();
