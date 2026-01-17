@@ -21,38 +21,39 @@ export default function SettingsScreen() {
     };
 
     const saveUserId = async () => {
-        await AsyncStorage.setItem('LINE_USER_ID', userId);
-        setUserId(userId); // Ensure state update
-        Alert.alert('成功', 'User ID 已儲存！'); // Web alert might fall back to window.alert
-    } catch (e) {
-        Alert.alert('錯誤', '儲存失敗');
-    }
-};
+        try {
+            await AsyncStorage.setItem('LINE_USER_ID', userId);
+            setUserId(userId); // Ensure state update
+            Alert.alert('成功', 'User ID 已儲存！'); // Web alert might fall back to window.alert
+        } catch (e) {
+            Alert.alert('錯誤', '儲存失敗');
+        }
+    };
 
-return (
-    <SafeAreaView style={styles.container}>
-        <Text style={styles.title}>設定</Text>
+    return (
+        <SafeAreaView style={styles.container}>
+            <Text style={styles.title}>設定</Text>
 
-        <View style={styles.section}>
-            <Text style={styles.label}>LINE User ID</Text>
-            <Text style={styles.hint}>請從官方帳號回應中複製 ID 並貼上</Text>
-            <TextInput
-                style={styles.input}
-                value={userId}
-                onChangeText={setUserId}
-                placeholder="Uxxxxxxxx..."
-                autoCapitalize="none"
-            />
-            <Pressable onPress={saveUserId} style={styles.button}>
-                <Text style={styles.buttonText}>儲存 ID</Text>
-            </Pressable>
-        </View>
+            <View style={styles.section}>
+                <Text style={styles.label}>LINE User ID</Text>
+                <Text style={styles.hint}>請從官方帳號回應中複製 ID 並貼上</Text>
+                <TextInput
+                    style={styles.input}
+                    value={userId}
+                    onChangeText={setUserId}
+                    placeholder="Uxxxxxxxx..."
+                    autoCapitalize="none"
+                />
+                <Pressable onPress={saveUserId} style={styles.button}>
+                    <Text style={styles.buttonText}>儲存 ID</Text>
+                </Pressable>
+            </View>
 
-        <View style={styles.section}>
-            <Text style={styles.text}>版本 1.0.0 (MVP)</Text>
-        </View>
-    </SafeAreaView>
-);
+            <View style={styles.section}>
+                <Text style={styles.text}>版本 1.0.0 (MVP)</Text>
+            </View>
+        </SafeAreaView>
+    );
 }
 
 const styles = StyleSheet.create({
