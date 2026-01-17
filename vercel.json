@@ -1,7 +1,6 @@
 {
     "devCommand": "npx expo start --web",
     "buildCommand": "npx expo export -p web",
-    "outputDirectory": "dist",
     "rewrites": [
         {
             "source": "/api/(.*)",
