@@ -6,11 +6,24 @@ const API_BASE_URL = 'https://holdwait.vercel.app';
 
 export const api = {
     getRestaurants: async (): Promise<Restaurant[]> => {
-        return new Promise((resolve) => {
-            setTimeout(() => {
-                resolve(RESTAURANTS);
-            }, DELAY_MS);
-        });
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/restaurants`);
+            if (!response.ok) throw new Error('Failed to fetch restaurants');
+            const data = await response.json();
+            // Map backend format to frontend format
+            return data.map((r: any) => ({
+                id: String(r.id),
+                name: r.name,
+                bookingUrl: r.booking_url,
+                location: '',
+                rating: 0,
+                tags: [],
+                imageUrl: ''
+            }));
+        } catch (e) {
+            console.error('Failed to fetch restaurants:', e);
+            return RESTAURANTS; // Fallback to mock
+        }
     },
 
     getRestaurantById: async (id: string): Promise<Restaurant | undefined> => {
@@ -47,8 +60,7 @@ export const api = {
                 return false;
             }
 
-            const restaurant = RESTAURANTS.find(r => r.id === restaurantId);
-            if (!restaurant) throw new Error('Restaurant not found');
+            // Backend will validate restaurant ID, no need for local lookup
 
             const response = await fetch(`${API_BASE_URL}/api/watchlist`, {
                 method: 'POST',
@@ -58,14 +70,13 @@ export const api = {
                 body: JSON.stringify({
                     userId: userId,
                     restaurantId: restaurantId,
-                    bookingUrl: restaurant.bookingUrl,
                     targetDate: date,
                     partySize: partySize
                 }),
             });
 
             if (response.ok) {
-                console.log(`Added to watchlist: ${restaurant.name}`);
+                console.log(`Added to watchlist: restaurantId=${restaurantId}`);
                 return true;
             }
             return false;
