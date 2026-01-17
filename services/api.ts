@@ -2,7 +2,7 @@ import { RESTAURANTS, Restaurant, WATCHLIST, WatchlistItem } from './mockData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const DELAY_MS = 800;
-const API_BASE_URL = 'https://keeping-six.vercel.app';
+const API_BASE_URL = 'https://holdwait.vercel.app';
 
 export const api = {
     getRestaurants: async (): Promise<Restaurant[]> => {
