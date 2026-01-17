@@ -14,11 +14,14 @@ export const api = {
             return data.map((r: any) => ({
                 id: String(r.id),
                 name: r.name,
-                bookingUrl: r.booking_url,
-                location: '',
-                rating: 0,
-                tags: [],
-                imageUrl: ''
+                image: r.image_url || '',
+                location: r.location || '',
+                rating: parseFloat(r.rating) || 0,
+                status: 'FULL' as const,
+                tags: r.tags || [],
+                slots: [],
+                bookingUrl: r.booking_url || '',
+                inlineId: r.inline_id || ''
             }));
         } catch (e) {
             console.error('Failed to fetch restaurants:', e);

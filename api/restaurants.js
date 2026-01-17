@@ -12,7 +12,19 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const { rows } = await sql`SELECT * FROM restaurants ORDER BY id ASC`;
+        const { rows } = await sql`
+            SELECT 
+                id,
+                inline_id,
+                name,
+                location,
+                tags,
+                booking_url,
+                image_url,
+                rating
+            FROM restaurants 
+            ORDER BY id ASC
+        `;
         return res.status(200).json(rows);
     } catch (error) {
         return res.status(500).json({ error: String(error) });
