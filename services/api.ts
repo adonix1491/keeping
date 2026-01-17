@@ -2,6 +2,7 @@ import { RESTAURANTS, Restaurant, WATCHLIST, WatchlistItem } from './mockData';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const DELAY_MS = 800;
+const API_BASE_URL = 'https://keeping-six.vercel.app';
 
 export const api = {
     getRestaurants: async (): Promise<Restaurant[]> => {
@@ -26,7 +27,7 @@ export const api = {
             const userId = await AsyncStorage.getItem('LINE_USER_ID');
             if (!userId) return [];
 
-            const response = await fetch(`/api/watchlist?userId=${userId}`);
+            const response = await fetch(`${API_BASE_URL}/api/watchlist?userId=${userId}`);
             if (!response.ok) return [];
 
             const data = await response.json();
@@ -49,7 +50,7 @@ export const api = {
             const restaurant = RESTAURANTS.find(r => r.id === restaurantId);
             if (!restaurant) throw new Error('Restaurant not found');
 
-            const response = await fetch('/api/watchlist', {
+            const response = await fetch(`${API_BASE_URL}/api/watchlist`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
