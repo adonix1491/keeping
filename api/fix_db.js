@@ -3,17 +3,14 @@ const { sql } = require('@vercel/postgres');
 module.exports = async (req, res) => {
     try {
         let logs = [];
-        logs.push('Starting Data Reset & Seed...');
+        logs.push('Starting ID Reset & Reseed...');
 
-        // 1. Clear Tasks (to remove corrupted/empty refs)
-        await sql`DELETE FROM tasks`;
-        logs.push('Cleared tasks table.');
+        // 1. TRUNCATE Tasks and Restaurants with Restart Identity
+        // CASCADE is needed because tasks reference restaurants
+        await sql`TRUNCATE TABLE restaurants, tasks RESTART IDENTITY CASCADE`;
+        logs.push('Truncated (Reset IDs) restaurants and tasks.');
 
-        // 2. Clear Restaurants
-        await sql`DELETE FROM restaurants`; // Not TRUNCATE to avoid cascade issues if any? Simple delete is fine.
-        logs.push('Cleared restaurants table.');
-
-        // 3. Insert Real Restaurants
+        // 2. Insert Real Restaurants (IDs will start at 1)
         const restaurants = [
             { branch_id: 1, name: '饗饗 INPARADISE 微風信義店', booking_url: 'https://www.feastogether.com.tw/booking/Paradise' },
             { branch_id: 2, name: '饗饗 INPARADISE 新莊店', booking_url: 'https://www.feastogether.com.tw/booking/Paradise' },
@@ -35,17 +32,15 @@ module.exports = async (req, res) => {
         ];
 
         for (const r of restaurants) {
-            // Upsert based on branch_id?? Or just Insert. branch_id is mostly cosmetic for my app but unique in real world.
-            // company_id assumed 1 for now.
             await sql`
                 INSERT INTO restaurants (company_id, branch_id, name, booking_url)
                 VALUES (1, ${r.branch_id}, ${r.name}, ${r.booking_url})
             `;
         }
-        logs.push(`Seeded ${restaurants.length} restaurants.`);
+        logs.push(`Seeded ${restaurants.length} restaurants (IDs 1-17).`);
 
         return res.status(200).json({
-            message: 'Seed Complete',
+            message: 'Reseed Complete',
             logs: logs
         });
     } catch (error) {
