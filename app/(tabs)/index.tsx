@@ -27,6 +27,7 @@ export default function HomeScreen() {
     const renderHeader = () => (
         <View style={styles.header}>
             <Text style={styles.appTitle}>候位通 🍽️</Text>
+            <Text style={styles.sectionTitle}>餐廳列表 (v2.1 Fixed)</Text>
 
             {/* Search Bar */}
             <View style={styles.searchBar}>
