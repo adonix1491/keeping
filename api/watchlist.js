@@ -1,130 +1,103 @@
 const { sql } = require('@vercel/postgres');
 const line = require('@line/bot-sdk');
 
-function parseInlineUrl(url) {
-    try {
-        const parts = url.split('/booking/');
-        if (parts.length > 1) {
-            const ids = parts[1].split('/');
-            if (ids.length >= 2) {
-                const cid = ids[0];
-                const bid = ids[1].split('?')[0];
-                return { cid, bid };
-            }
-        }
-    } catch (e) {
-        return null;
+// Helper to parse body safely
+const parseBody = (req) => {
+    if (!req.body) return {};
+    if (typeof req.body === 'string') {
+        try { return JSON.parse(req.body); } catch (e) { return {}; }
     }
-    return null;
-}
+    return req.body;
+};
 
 module.exports = async (req, res) => {
-    const method = req.method ? req.method.toUpperCase() : 'UNKNOWN';
+    res.setHeader('Access-Control-Allow-Credentials', true);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+    res.setHeader(
+        'Access-Control-Allow-Headers',
+        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    );
 
-    // GET: List Tasks
-    if (method === 'GET') {
-        const userId = req.query.userId;
-        if (!userId) {
-            return res.status(400).json({ error: 'User ID required' });
-        }
-
-        try {
-            const { rows } = await sql`
-            SELECT 
-                t.id, 
-                t.restaurant_id, 
-                r.name as restaurant_name, 
-                t.target_date, 
-                t.party_size, 
-                t.status
-            FROM tasks t
-            JOIN restaurants r ON t.restaurant_id = r.id
-            WHERE t.user_id = ${userId} OR t.line_user_id = ${userId}
-            ORDER BY t.created_at DESC
-            `;
-
-            const items = rows.map(row => ({
-                id: row.id.toString(),
-                restaurantId: row.restaurant_id.toString(),
-                restaurantName: row.restaurant_name,
-                targetDate: row.target_date,
-                partySize: row.party_size,
-                status: row.status === 'NOTIFIED' ? 'FOUND' : 'LOADING',
-                foundSlot: row.status === 'NOTIFIED' ? 'Check LINE' : undefined
-            }));
-
-            return res.status(200).json(items);
-        } catch (error) {
-            console.error(error);
-            return res.status(500).json({ error: String(error) });
-        }
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
     }
 
-    // POST: Add Task
-    if (method === 'POST') {
-        try {
-            const { userId, bookingUrl, targetDate, partySize } = req.body;
+    try {
+        const method = req.method ? req.method.toUpperCase() : 'GET';
 
-            if (!userId || !bookingUrl) {
-                return res.status(400).json({ error: 'Missing required fields' });
+        // GET Handler
+        if (method === 'GET') {
+            const { userId } = req.query;
+            if (!userId) {
+                return res.status(400).json({ error: 'Missing userId' });
             }
-
-            const parsed = parseInlineUrl(bookingUrl);
-            if (!parsed) {
-                return res.status(400).json({ error: 'Invalid Booking URL' });
-            }
-            const { cid, bid } = parsed;
-
-            // 1. Ensure Restaurant Exists
-            let restaurantId;
-            const checkRes = await sql`SELECT id FROM restaurants WHERE branch_id = ${bid}`;
-
-            if (checkRes.rows.length > 0) {
-                restaurantId = checkRes.rows[0].id;
-            } else {
-                const insertRes = await sql`
-                    INSERT INTO restaurants (company_id, branch_id, name, booking_url) 
-                    VALUES (${cid}, ${bid}, 'Unknown', ${bookingUrl})
-                    RETURNING id;
-                `;
-                restaurantId = insertRes.rows[0].id;
-            }
-
-            // 2. Insert Task
-            await sql`
-                INSERT INTO tasks (user_id, restaurant_id, target_date, party_size, status) 
-                VALUES (${userId}, ${restaurantId}, ${targetDate}, ${partySize}, 'PENDING');
+            // Use line_user_id check
+            const tasks = await sql`
+                SELECT t.*, r.name as restaurant_name, r.booking_url 
+                FROM tasks t
+                JOIN restaurants r ON t.restaurant_id = r.id
+                WHERE t.line_user_id = ${userId} OR t.user_id = ${userId}
+                ORDER BY t.created_at DESC
             `;
+            return res.status(200).json(tasks.rows);
+        }
 
-            // 3. Send LINE Confirmation
-            const lineConfig = {
-                channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
-                channelSecret: process.env.LINE_CHANNEL_SECRET || '',
-            };
+        // POST Handler (Add to Watchlist)
+        if (method === 'POST') {
+            const body = parseBody(req);
+            const { userId, restaurantId, targetDate, partySize } = body;
 
-            try {
-                const lineClient = new line.Client(lineConfig);
-                await lineClient.pushMessage(userId, {
-                    type: 'text',
-                    text: `✅ 預約監控已建立！\n\n日期時段：${targetDate}\n人數：${partySize} 位\n\n系統正在為您監控空位，一旦有釋出將會立即發送通知給您！🚀`,
+            if (!userId || !restaurantId || !targetDate || !partySize) {
+                return res.status(400).json({
+                    error: 'Missing fields',
+                    received: body
                 });
-            } catch (err) {
-                console.error('Failed to send LINE confirmation:', err);
-                // Don't fail the request if LINE fails, just log it
             }
 
-            return res.status(200).json({ success: true });
+            // 1. Get Restaurant Info for push message
+            const { rows: restaurants } = await sql`SELECT * FROM restaurants WHERE id = ${restaurantId}`;
+            if (restaurants.length === 0) {
+                // Try legacy matching if passed restaurantId is string ID (unlikely)
+                // Or just fail
+                return res.status(404).json({ error: 'Restaurant not found' });
+            }
+            const restaurant = restaurants[0];
 
-        } catch (error) {
-            console.error(error);
-            return res.status(500).json({ error: String(error) });
+            // 2. Insert Task (Use both ID columns for robust matching)
+            // Note: setup_db should have added line_user_id
+            await sql`
+                INSERT INTO tasks (user_id, line_user_id, restaurant_id, target_date, party_size, status) 
+                VALUES (${userId}, ${userId}, ${restaurantId}, ${targetDate}, ${partySize}, 'PENDING')
+            `;
+
+            // 3. Send LINE Confirmation (Async, don't block response if fails)
+            try {
+                const lineConfig = {
+                    channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
+                    channelSecret: process.env.LINE_CHANNEL_SECRET || '',
+                };
+                if (lineConfig.channelAccessToken) {
+                    const lineClient = new line.Client(lineConfig);
+                    const pushMsg = {
+                        type: 'text',
+                        text: `✅ 預約監控已建立！\n\n餐廳：${restaurant.name}\n日期：${targetDate}\n人數：${partySize}人\n\n一旦有空位，我會馬上通知您！`
+                    };
+                    await lineClient.pushMessage(userId, pushMsg);
+                }
+            } catch (lineError) {
+                console.error('LINE Push Failed:', lineError);
+                // Swallow error so user still gets Success
+            }
+
+            return res.status(200).json({ success: true, message: 'Task added' });
         }
-    }
 
-    // Debug: Return method received
-    return res.status(405).json({
-        error: 'Method Not Allowed',
-        received_method: method,
-        debug_tip: 'Check if you are sending the right method'
-    });
+        return res.status(405).json({ error: `Method ${method} Not Allowed` });
+
+    } catch (error) {
+        console.error('API Error:', error);
+        return res.status(500).json({ error: String(error), stack: error.stack });
+    }
 };
