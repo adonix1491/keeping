@@ -4,6 +4,24 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const DELAY_MS = 800;
 const API_BASE_URL = 'https://holdwait.vercel.app';
 
+/**
+ * 將 API 狀態轉換為前端狀態
+ * @param apiStatus API 返回的狀態
+ * @returns 前端使用的狀態
+ */
+function mapStatus(apiStatus: string): 'LOADING' | 'FOUND' | 'EXPIRED' {
+    switch (apiStatus) {
+        case 'FOUND':
+            return 'FOUND';
+        case 'EXPIRED':
+        case 'CANCELLED':
+            return 'EXPIRED';
+        case 'PENDING':
+        default:
+            return 'LOADING';
+    }
+}
+
 export const api = {
     getRestaurants: async (): Promise<Restaurant[]> => {
         try {
@@ -48,7 +66,18 @@ export const api = {
             if (!response.ok) return [];
 
             const data = await response.json();
-            return data;
+
+            // 轉換 API 格式為前端格式
+            return data.map((item: any) => ({
+                id: String(item.id),
+                restaurantId: String(item.restaurant_id),
+                restaurantName: item.restaurant_name || '',
+                targetDate: item.target_date ? item.target_date.split('T')[0] : '',
+                partySize: item.party_size || 2,
+                status: mapStatus(item.status),
+                foundSlot: item.target_time || undefined,
+                createdAt: item.created_at || ''
+            }));
         } catch (e) {
             console.error('Failed to fetch watchlist:', e);
             return [];
