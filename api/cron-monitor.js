@@ -84,11 +84,26 @@ module.exports = async (req, res) => {
                         // Send LINE notification
                         const userId = task.line_user_id || task.user_id;
                         if (userId) {
+                            // 檢查用戶點數是否足夠（推播消耗 5 點）
+                            const { rows: userRows } = await sql`
+                                SELECT points FROM users WHERE line_user_id = ${userId}
+                            `;
+
+                            if (!userRows.length || userRows[0].points < 5) {
+                                logs.push(`User ${userId} has insufficient points (${userRows[0]?.points || 0}), skipping notification`);
+                                continue;  // 跳過此任務，保留待下次檢查
+                            }
+
                             try {
                                 await lineClient.pushMessage(userId, {
                                     type: 'text',
                                     text: `🎉 候位通知！\n\n${task.restaurant_name}\n📅 ${task.target_date}\n⏰ ${task.target_time}\n👥 ${task.party_size}位\n\n該時段已開放訂位！\n立即預訂：${task.booking_url}`
                                 });
+
+                                // 推播成功後扣除 5 點
+                                await sql`
+                                    UPDATE users SET points = points - 5 WHERE line_user_id = ${userId}
+                                `;
 
                                 // Mark as notified
                                 await sql`
@@ -98,7 +113,7 @@ module.exports = async (req, res) => {
                                 `;
 
                                 notifiedCount++;
-                                logs.push(`Notified user for ${task.restaurant_name} at ${task.target_time}`);
+                                logs.push(`Notified user for ${task.restaurant_name} at ${task.target_time}, deducted 5 points`);
                             } catch (lineError) {
                                 logs.push(`LINE push failed for task ${task.id}: ${lineError.message}`);
                             }
@@ -123,11 +138,26 @@ module.exports = async (req, res) => {
                         const userId = task.line_user_id || task.user_id;
 
                         if (userId) {
+                            // 檢查用戶點數是否足夠（推播消耗 5 點）
+                            const { rows: userRows } = await sql`
+                                SELECT points FROM users WHERE line_user_id = ${userId}
+                            `;
+
+                            if (!userRows.length || userRows[0].points < 5) {
+                                logs.push(`User ${userId} has insufficient points (${userRows[0]?.points || 0}), skipping notification`);
+                                continue;  // 跳過此任務，保留待下次檢查
+                            }
+
                             try {
                                 await lineClient.pushMessage(userId, {
                                     type: 'text',
                                     text: `🎉 候位通知！\n\n${task.restaurant_name}\n📅 ${task.target_date}\n👥 ${task.party_size}位\n\n以下時段已開放：\n${slotsText}\n\n立即預訂：${task.booking_url}`
                                 });
+
+                                // 推播成功後扣除 5 點
+                                await sql`
+                                    UPDATE users SET points = points - 5 WHERE line_user_id = ${userId}
+                                `;
 
                                 await sql`
                                     UPDATE tasks 
@@ -136,7 +166,7 @@ module.exports = async (req, res) => {
                                 `;
 
                                 notifiedCount++;
-                                logs.push(`Notified user for ${task.restaurant_name} with ${availableSlots.length} slots`);
+                                logs.push(`Notified user for ${task.restaurant_name} with ${availableSlots.length} slots, deducted 5 points`);
                             } catch (lineError) {
                                 logs.push(`LINE push failed for task ${task.id}: ${lineError.message}`);
                             }

@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
         // POST Handler (Add to Watchlist)
         if (method === 'POST') {
             const body = parseBody(req);
-            const { userId, restaurantId, targetDate, partySize, targetTime } = body;
+            const { userId, restaurantId, targetDate, partySize, targetTime, deviceId } = body;
 
             if (!userId || !restaurantId || !targetDate || !partySize) {
                 return res.status(400).json({
@@ -56,17 +56,41 @@ module.exports = async (req, res) => {
                 });
             }
 
-            // 1. Get Restaurant Info for push message
+            // 1. 檢查用戶點數是否足夠（訂閱監控消耗 1 點）
+            const userDeviceId = deviceId || userId;
+            const { rows: userRows } = await sql`
+                SELECT points FROM users WHERE device_id = ${userDeviceId} OR line_user_id = ${userId}
+            `;
+
+            if (userRows.length === 0) {
+                return res.status(400).json({
+                    error: '請先至設定頁完成綁定',
+                    code: 'USER_NOT_FOUND'
+                });
+            }
+
+            if (userRows[0].points < 1) {
+                return res.status(400).json({
+                    error: '點數不足，無法新增監控任務（需要 1 點）',
+                    code: 'INSUFFICIENT_POINTS',
+                    currentPoints: userRows[0].points
+                });
+            }
+
+            // 2. Get Restaurant Info for push message
             const { rows: restaurants } = await sql`SELECT * FROM restaurants WHERE id = ${restaurantId}`;
             if (restaurants.length === 0) {
-                // Try legacy matching if passed restaurantId is string ID (unlikely)
-                // Or just fail
                 return res.status(404).json({ error: 'Restaurant not found' });
             }
             const restaurant = restaurants[0];
 
-            // 2. Insert Task (Use both ID columns for robust matching)
-            // Note: setup_db should have added line_user_id
+            // 3. 扣除點數（訂閱監控消耗 1 點）
+            await sql`
+                UPDATE users SET points = points - 1 
+                WHERE device_id = ${userDeviceId} OR line_user_id = ${userId}
+            `;
+
+            // 4. Insert Task (Use both ID columns for robust matching)
             await sql`
                 INSERT INTO tasks (user_id, line_user_id, restaurant_id, target_date, target_time, party_size, status) 
                 VALUES (${userId}, ${userId}, ${restaurantId}, ${targetDate}, ${targetTime || null}, ${partySize}, 'PENDING')

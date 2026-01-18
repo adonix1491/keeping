@@ -32,7 +32,7 @@ async function handleEvent(event) {
         console.log(`[NEW FOLLOWER] User ID: ${userId}`);
         return client.replyMessage(event.replyToken, {
             type: 'text',
-            text: `歡迎使用候位通！\n您的 User ID 是：\n${userId}\n\n請在 App 設定中輸入此 ID 以啟用通知功能。`,
+            text: `歡迎使用HOLDWAIT候位通！\n您的 User ID 是：\n${userId}\n\n請在 App 設定中輸入此 ID 以啟用通知功能。`,
         });
     }
 

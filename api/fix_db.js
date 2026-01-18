@@ -8,6 +8,7 @@ module.exports = async (req, res) => {
         // 1. Drop and recreate restaurants table with new schema
         await sql`DROP TABLE IF EXISTS availability_cache`;
         await sql`DROP TABLE IF EXISTS tasks`;
+        await sql`DROP TABLE IF EXISTS users`;
         await sql`DROP TABLE IF EXISTS restaurants`;
         logs.push('Dropped old tables.');
 
@@ -42,7 +43,22 @@ module.exports = async (req, res) => {
         `;
         logs.push('Created tasks table.');
 
-        // 4. Seed restaurants with full data
+        // 4. Create users table for member points system
+        await sql`
+            CREATE TABLE users (
+                id SERIAL PRIMARY KEY,
+                device_id VARCHAR(255) UNIQUE NOT NULL,
+                line_user_id VARCHAR(255) UNIQUE,
+                email VARCHAR(255) UNIQUE,
+                points INTEGER DEFAULT 0,
+                line_bound_at TIMESTAMP WITH TIME ZONE,
+                email_bound_at TIMESTAMP WITH TIME ZONE,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+        logs.push('Created users table.');
+
+        // 5. Seed restaurants with full data
         const restaurants = [
             {
                 inline_id: '-NeqTStJZDIBQHEMSDI8',
@@ -77,7 +93,7 @@ module.exports = async (req, res) => {
                 location: '台北市',
                 tags: ['燒鳥', '日式', '居酒屋'],
                 booking_url: 'https://inline.app/booking/-NdcVTihF03AzdgpS38Q:inline-live-3/-NdcVTuhlCqT4WfSAaUm',
-                image_url: 'https://inline.imgix.net/branch/-NdcVTihF03AzdgpS38Q:inline-live-3--NdcVTuhlCqT4WfSAaUm.jpg?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
+                image_url: 'https://inline.imgix.net/branch/-NdcVTihF03AzdgpS38Q:inline-live-3--NdcVTuhlCqT4WfSAaUm-dac50e8e-8dce-4d68-880c-3a855cccbfea.jpg?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
                 rating: 4.5
             },
             {
@@ -86,7 +102,7 @@ module.exports = async (req, res) => {
                 location: '屏東縣',
                 tags: ['原住民料理', 'Fire', 'Fine Dining'],
                 booking_url: 'https://inline.app/booking/-LzoDiSgrwoz1PHLtibz:inline-live-1/-LzoDjNruO8RBsVIMQ9W',
-                image_url: 'https://inline.imgix.net/branch/-LzoDiSgrwoz1PHLtibz:inline-live-1--LzoDjNruO8RBsVIMQ9W.jpg?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
+                image_url: 'https://inline.imgix.net/branch/-LzoDiSgrwoz1PHLtibz:inline-live-1--LzoDjNruO8RBsVIMQ9W-7c489f23-8730-40ba-920b-bfa036ef759e__DSC4348.jpg?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
                 rating: 4.9
             },
             {
@@ -104,7 +120,7 @@ module.exports = async (req, res) => {
                 location: '新北市',
                 tags: ['麻辣鍋', '火鍋', '老字號'],
                 booking_url: 'https://inline.app/booking/-KO9-zyZTRpTH7LNAe99/-KO9-zyZTRpTH7LNAe9A',
-                image_url: 'https://inline.imgix.net/branch/-KO9-zyZTRpTH7LNAe99--KO9-zyZTRpTH7LNAe9A.jpg?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
+                image_url: 'https://inline.imgix.net/branch/-KO9-zyZTRpTH7LNAe99--KO9-zyZTRpTH7LNAe9A-6e11d234-ff53-44a9-8a5f-c3e19e1769dd.jpg?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
                 rating: 4.6
             },
             {
@@ -131,7 +147,7 @@ module.exports = async (req, res) => {
                 location: '屏東縣',
                 tags: ['景觀餐廳', '鐵板燒', '原住民料理'],
                 booking_url: 'https://inline.app/booking/-MW5LEBQ8Wkn308HkJZD:inline-live-2/-MW5LEJ0qvn9Xc5-azxz',
-                image_url: 'https://inline.imgix.net/branch/-MW5LEBQ8Wkn308HkJZD:inline-live-2--MW5LEJ0qvn9Xc5-azxz.jpg?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
+                image_url: 'https://inline.imgix.net/branch/-MW5LEBQ8Wkn308HkJZD:inline-live-2--MW5LEJ0qvn9Xc5-azxz-31d4cb9a-f918-48fa-a05f-cbc41004fe05_1.jpg?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
                 rating: 4.8
             },
             {
@@ -149,7 +165,7 @@ module.exports = async (req, res) => {
                 location: '高雄市',
                 tags: ['Buffet', '海鮮', '吃到飽'],
                 booking_url: 'https://inline.app/booking/-MZH-xZRTVVGkgxbWV95:inline-live-2/-MZMQIyR-XSNcmtWFhQa',
-                image_url: 'https://inline.imgix.net/branch/-MZH-xZRTVVGkgxbWV95:inline-live-2--MZH-xfUSdEozfSeH4dk.jpg?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
+                image_url: 'https://inline.imgix.net/branch/-MZH-xZRTVVGkgxbWV95:inline-live-2--MZY7xXP5cU_rBCfm0HP-af970ce2-d914-439b-871b-38e2aabe426c_1.jpg?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
                 rating: 4.6
             },
             {
@@ -158,7 +174,7 @@ module.exports = async (req, res) => {
                 location: '台北市',
                 tags: ['Buffet', '海鮮', '吃到飽'],
                 booking_url: 'https://inline.app/booking/-MZH-xZRTVVGkgxbWV95:inline-live-2/-MZY7xXP5cU_rBCfm0HP',
-                image_url: 'https://inline.imgix.net/branch/-MZH-xZRTVVGkgxbWV95:inline-live-2--MZH-xfUSdEozfSeH4dk.jpg?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
+                image_url: 'https://inline.imgix.net/branch/-MZH-xZRTVVGkgxbWV95:inline-live-2--MZY7xXP5cU_rBCfm0HP-af970ce2-d914-439b-871b-38e2aabe426c_1.jpg?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
                 rating: 4.4
             },
             {
@@ -238,7 +254,7 @@ module.exports = async (req, res) => {
                 location: '台中市',
                 tags: ['法式料理', '約會', '精緻'],
                 booking_url: 'https://inline.app/booking/-L1WFaCfzl5tayaJ4gpY/-MkM2_238WfoeXNthg4P',
-                image_url: 'https://inline.imgix.net/branch/-L1WFaCfzl5tayaJ4gpY--MkM2_238WfoeXNthg4P.jpg?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
+                image_url: 'https://inline.imgix.net/branch/-L1WFaCfzl5tayaJ4gpY--MkM2_238WfoeXNthg4P-3039f338-1a2c-4512-a397-003e8c0a2723_02.JPG?auto=format&blur=200&fit=crop&h=732.8000000000001&w=1832',
                 rating: 4.8
             },
             {
@@ -247,7 +263,7 @@ module.exports = async (req, res) => {
                 location: '台北市',
                 tags: ['火鍋', '涮涮鍋', '人氣'],
                 booking_url: 'https://inline.app/booking/-MYcfjTWHCbsasKqbe6Q:inline-live-2/-MYcfjcXLJmiPsUwEFWu',
-                image_url: 'https://inline.imgix.net/branch/-MYcfjTWHCbsasKqbe6Q:inline-live-2--MYcfjcXLJmiPsUwEFWu.jpg?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
+                image_url: 'https://inline.imgix.net/branch/-MYcfjTWHCbsasKqbe6Q:inline-live-2--MYcfjcXLJmiPsUwEFWu-87a34ab2-c30e-47f7-b5b8-b81a342f1564.png?auto=format&dpr=1&fit=crop&fm=jpg&h=456&w=1140',
                 rating: 4.5
             }
         ];

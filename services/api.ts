@@ -112,5 +112,110 @@ export const api = {
             // Return empty slots on error
             return [];
         }
+    },
+
+    /**
+     * 取得用戶資料與點數
+     * @param deviceId 裝置唯一識別碼
+     * @returns 用戶資料或 null
+     */
+    getUserProfile: async (deviceId: string): Promise<UserProfile | null> => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/user?deviceId=${deviceId}`);
+            if (!response.ok) return null;
+            const data = await response.json();
+            return data.user || null;
+        } catch (e) {
+            console.error('Failed to fetch user profile:', e);
+            return null;
+        }
+    },
+
+    /**
+     * 綁定 LINE ID
+     * @param deviceId 裝置唯一識別碼
+     * @param lineUserId LINE User ID
+     * @returns 綁定結果
+     */
+    bindLineId: async (deviceId: string, lineUserId: string): Promise<BindResult> => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/user`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    deviceId,
+                    lineUserId,
+                    action: 'bind_line'
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                return { success: false, error: data.error, code: data.code };
+            }
+            return {
+                success: true,
+                message: data.message,
+                pointsAwarded: data.pointsAwarded,
+                user: data.user
+            };
+        } catch (e) {
+            console.error('Failed to bind LINE ID:', e);
+            return { success: false, error: '綁定失敗，請稍後再試' };
+        }
+    },
+
+    /**
+     * 綁定 Email
+     * @param deviceId 裝置唯一識別碼
+     * @param email Email 地址
+     * @returns 綁定結果
+     */
+    bindEmail: async (deviceId: string, email: string): Promise<BindResult> => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/user`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    deviceId,
+                    email,
+                    action: 'bind_email'
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                return { success: false, error: data.error, code: data.code };
+            }
+            return {
+                success: true,
+                message: data.message,
+                pointsAwarded: data.pointsAwarded,
+                user: data.user
+            };
+        } catch (e) {
+            console.error('Failed to bind email:', e);
+            return { success: false, error: '綁定失敗，請稍後再試' };
+        }
     }
 };
+
+// 用戶資料型別
+export interface UserProfile {
+    deviceId: string;
+    lineUserId: string | null;
+    email: string | null;
+    points: number;
+    isLineBound: boolean;
+    isEmailBound: boolean;
+    lineBoundAt: string | null;
+    emailBoundAt: string | null;
+}
+
+// 綁定結果型別
+export interface BindResult {
+    success: boolean;
+    message?: string;
+    error?: string;
+    code?: string;
+    pointsAwarded?: number;
+    user?: UserProfile;
+}
