@@ -13,8 +13,12 @@
     ],
     "crons": [
         {
-            "path": "/api/check",
-            "schedule": "0 16 * * *"
+            "path": "/api/cron/hourly-refresh",
+            "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/cron/task-monitor",
+            "schedule": "*/15 * * * *"
         }
     ]
 }

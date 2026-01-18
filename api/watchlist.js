@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
         // POST Handler (Add to Watchlist)
         if (method === 'POST') {
             const body = parseBody(req);
-            const { userId, restaurantId, targetDate, partySize } = body;
+            const { userId, restaurantId, targetDate, partySize, targetTime } = body;
 
             if (!userId || !restaurantId || !targetDate || !partySize) {
                 return res.status(400).json({
@@ -68,8 +68,8 @@ module.exports = async (req, res) => {
             // 2. Insert Task (Use both ID columns for robust matching)
             // Note: setup_db should have added line_user_id
             await sql`
-                INSERT INTO tasks (user_id, line_user_id, restaurant_id, target_date, party_size, status) 
-                VALUES (${userId}, ${userId}, ${restaurantId}, ${targetDate}, ${partySize}, 'PENDING')
+                INSERT INTO tasks (user_id, line_user_id, restaurant_id, target_date, target_time, party_size, status) 
+                VALUES (${userId}, ${userId}, ${restaurantId}, ${targetDate}, ${targetTime || null}, ${partySize}, 'PENDING')
             `;
 
             // 3. Send LINE Confirmation (Async, don't block response if fails)
