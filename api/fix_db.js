@@ -6,6 +6,7 @@ module.exports = async (req, res) => {
         logs.push('Starting Schema Update & Full Reseed...');
 
         // 1. Drop and recreate restaurants table with new schema
+        await sql`DROP TABLE IF EXISTS availability_cache`;
         await sql`DROP TABLE IF EXISTS tasks`;
         await sql`DROP TABLE IF EXISTS restaurants`;
         logs.push('Dropped old tables.');
