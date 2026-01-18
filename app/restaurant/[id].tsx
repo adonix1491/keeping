@@ -174,6 +174,12 @@ export default function RestaurantDetailScreen() {
 
                     {loadingSlots ? (
                         <ActivityIndicator style={{ marginTop: 20 }} />
+                    ) : slots.length === 0 ? (
+                        <View style={styles.noSlotsContainer}>
+                            <Ionicons name="calendar-outline" size={48} color="#CBD5E1" />
+                            <Text style={styles.noSlotsText}>暫時無法接受候位</Text>
+                            <Text style={styles.noSlotsHint}>目前此日期尚無可用時段資訊</Text>
+                        </View>
                     ) : (
                         <>
                             {groupedSlots.lunch.length > 0 && (
@@ -584,5 +590,22 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: 'white'
+    },
+    // 無時段資料樣式
+    noSlotsContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 40,
+    },
+    noSlotsText: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#64748B',
+        marginTop: 16,
+    },
+    noSlotsHint: {
+        fontSize: 14,
+        color: '#94A3B8',
+        marginTop: 8,
     }
 });
