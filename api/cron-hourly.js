@@ -22,9 +22,9 @@ module.exports = async (req, res) => {
         const { rows: restaurants } = await sql`SELECT id, name, booking_url FROM restaurants`;
         logs.push(`Found ${restaurants.length} restaurants`);
 
-        // 2. Get dates to refresh (today + next 7 days)
+        // 2. Get dates to refresh (today + next 30 days)
         const dates = [];
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < 30; i++) {
             const d = new Date();
             d.setDate(d.getDate() + i);
             dates.push(d.toISOString().split('T')[0]);

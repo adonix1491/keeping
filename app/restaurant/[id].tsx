@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, Pressable, ActivityIndicator, Alert, Linking } from 'react-native';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { api } from '../../services/api';
@@ -58,13 +58,21 @@ export default function RestaurantDetailScreen() {
         setLoadingSlots(false);
     };
 
-    const handleSlotPress = (slot: { time: string, status: 'AVAILABLE' | 'FULL' }) => {
-        if (slot.status === 'AVAILABLE') {
-            Alert.alert('預訂確認', `您想預訂 ${selectedDate.label} ${slot.time} 嗎？`, [
-                { text: '取消', style: 'cancel' },
-                { text: '確認預訂', onPress: () => Alert.alert('成功', '預訂請求已送出') }
-            ]);
+    /**
+     * 處理時段點擊
+     * - AVAILABLE 或 hasWaitlist → 開啟 INLINE URL
+     * - FULL 且無 waitlist → 開啟監控訂閱 Sheet
+     */
+    const handleSlotPress = (slot: { time: string, status: 'AVAILABLE' | 'FULL', hasWaitlist?: boolean }) => {
+        if (slot.status === 'AVAILABLE' || slot.hasWaitlist) {
+            // 時段可預訂或有候補登記 → 開啟 INLINE 訂位頁面
+            if (restaurant?.bookingUrl) {
+                Linking.openURL(restaurant.bookingUrl);
+            } else {
+                Alert.alert('提示', '無法取得訂位連結');
+            }
         } else {
+            // 時段滿位且無候補 → 開啟監控訂閱
             setSelectedSlot(slot.time);
             setSheetVisible(true);
         }
@@ -157,6 +165,15 @@ export default function RestaurantDetailScreen() {
                                     setDateExpanded(false);
                                 }
                             )}
+                            {/* 第三個月份以完整顯示 30 天 */}
+                            {renderCalendar(
+                                new Date(new Date().getFullYear(), new Date().getMonth() + 2, 1),
+                                selectedDate,
+                                (newDate: any) => {
+                                    setSelectedDate(newDate);
+                                    setDateExpanded(false);
+                                }
+                            )}
                         </View>
                     )}
                 </View>
@@ -177,8 +194,8 @@ export default function RestaurantDetailScreen() {
                     ) : slots.length === 0 ? (
                         <View style={styles.noSlotsContainer}>
                             <Ionicons name="calendar-outline" size={48} color="#CBD5E1" />
-                            <Text style={styles.noSlotsText}>暫時無法接受候位</Text>
-                            <Text style={styles.noSlotsHint}>目前此日期尚無可用時段資訊</Text>
+                            <Text style={styles.noSlotsText}>目前尚未開放候位</Text>
+                            <Text style={styles.noSlotsHint}>請選擇其他日期或稍後再查詢</Text>
                         </View>
                     ) : (
                         <>
@@ -357,22 +374,43 @@ function renderCalendar(baseDate: Date, selected: any, onSelect: (date: any) => 
     );
 }
 
+/**
+ * 渲染時段按鈕
+ * - AVAILABLE: 可預訂（綠色）
+ * - FULL + hasWaitlist: 可登記候補（橘色，顯示「登記候補」）
+ * - FULL + 無 waitlist: 滿位（橘色，顯示「監控候位」）
+ */
 function renderSlotChip(
-    slot: { time: string, status: 'AVAILABLE' | 'FULL', canWaitlist?: boolean },
+    slot: { time: string, status: 'AVAILABLE' | 'FULL', hasWaitlist?: boolean, canWaitlist?: boolean },
     index: number,
     onPress: (slot: any) => void
 ) {
     const isFull = slot.status === 'FULL';
+    const hasWaitlist = slot.hasWaitlist || false;
+    const canMonitor = isFull && !hasWaitlist;
 
     return (
         <Pressable
             key={index}
-            style={[styles.slotChip, isFull && styles.slotChipFull]}
+            style={[
+                styles.slotChip,
+                isFull && styles.slotChipFull,
+                !isFull && styles.slotChipAvailable
+            ]}
             onPress={() => onPress(slot)}
         >
-            <Text style={[styles.slotTime, isFull && styles.slotTimeFull]}>{slot.time}</Text>
-            {isFull && slot.canWaitlist && (
+            <Text style={[
+                styles.slotTime,
+                isFull && styles.slotTimeFull,
+                !isFull && styles.slotTimeAvailable
+            ]}>
+                {slot.time}
+            </Text>
+            {hasWaitlist && (
                 <Text style={styles.waitlistText}>登記候補</Text>
+            )}
+            {canMonitor && (
+                <Text style={styles.monitorText}>監控候位</Text>
             )}
         </Pressable>
     );
@@ -572,6 +610,20 @@ const styles = StyleSheet.create({
         color: '#E97F3D'
     },
     waitlistText: {
+        fontSize: 11,
+        color: '#E97F3D',
+        marginTop: 2
+    },
+    // 可預訂時段樣式
+    slotChipAvailable: {
+        borderColor: '#10B981',
+        backgroundColor: '#ECFDF5'
+    },
+    slotTimeAvailable: {
+        color: '#059669'
+    },
+    // 監控候位文字樣式
+    monitorText: {
         fontSize: 11,
         color: '#E97F3D',
         marginTop: 2
