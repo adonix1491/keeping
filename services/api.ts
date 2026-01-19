@@ -68,16 +68,34 @@ export const api = {
             const data = await response.json();
 
             // 轉換 API 格式為前端格式
-            return data.map((item: any) => ({
-                id: String(item.id),
-                restaurantId: String(item.restaurant_id),
-                restaurantName: item.restaurant_name || '',
-                targetDate: item.target_date ? item.target_date.split('T')[0] : '',
-                partySize: item.party_size || 2,
-                status: mapStatus(item.status),
-                foundSlot: item.target_time || undefined,
-                createdAt: item.created_at || ''
-            }));
+            return data.map((item: any) => {
+                const targetDate = item.target_date ? item.target_date.split('T')[0] : '';
+
+                // 檢查是否過期（目標日期已過）
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const targetDateObj = new Date(targetDate);
+                const isExpired = targetDateObj < today;
+
+                // 判斷狀態：優先檢查日期是否過期
+                let status: 'LOADING' | 'FOUND' | 'EXPIRED';
+                if (isExpired && item.status !== 'FOUND') {
+                    status = 'EXPIRED';
+                } else {
+                    status = mapStatus(item.status);
+                }
+
+                return {
+                    id: String(item.id),
+                    restaurantId: String(item.restaurant_id),
+                    restaurantName: item.restaurant_name || '',
+                    targetDate: targetDate,
+                    partySize: item.party_size || 2,
+                    status: status,
+                    foundSlot: item.target_time || undefined,
+                    createdAt: item.created_at || ''
+                };
+            });
         } catch (e) {
             console.error('Failed to fetch watchlist:', e);
             return [];

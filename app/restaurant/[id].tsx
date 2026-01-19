@@ -267,25 +267,30 @@ function groupSlotsByPeriod(slots: { time: string, status: 'AVAILABLE' | 'FULL',
 function getMonthData(year: number, month: number) {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const days: (Date | null)[] = [];
+    const days: { date: Date | null; disabled: boolean }[] = [];
 
     for (let i = 0; i < firstDay; i++) {
-        days.push(null);
+        days.push({ date: null, disabled: true });
     }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const maxDate = new Date();
-    maxDate.setDate(maxDate.getDate() + 60);
+    maxDate.setDate(maxDate.getDate() + 30); // 改為 30 天
 
     for (let i = 1; i <= daysInMonth; i++) {
         const date = new Date(year, month, i);
-        if (date >= today && date <= maxDate) {
-            days.push(date);
-        } else if (date < today) {
-            days.push(null); // Past dates shown as empty
+        date.setHours(0, 0, 0, 0);
+
+        if (date < today) {
+            // 過去日期：顯示但反灰
+            days.push({ date, disabled: true });
+        } else if (date > maxDate) {
+            // 超過 30 天：顯示但反灰
+            days.push({ date, disabled: true });
         } else {
-            days.push(null); // Beyond 60 days
+            // 可選日期
+            days.push({ date, disabled: false });
         }
     }
 
@@ -306,9 +311,11 @@ function renderCalendar(baseDate: Date, selected: any, onSelect: (date: any) => 
                 ))}
             </View>
             <View style={styles.daysGrid}>
-                {days.map((date, i) => {
-                    if (!date) return <View key={i} style={styles.dayCell} />;
+                {days.map((dayInfo, i) => {
+                    if (!dayInfo.date) return <View key={i} style={styles.dayCell} />;
 
+                    const date = dayInfo.date;
+                    const isDisabled = dayInfo.disabled;
                     const dateStr = formatDateISO(date);
                     const isSelected = selected.fullDate === dateStr;
                     const isToday = dateStr === formatDateISO(new Date());
@@ -319,19 +326,26 @@ function renderCalendar(baseDate: Date, selected: any, onSelect: (date: any) => 
                             style={[
                                 styles.dayCell,
                                 isSelected && styles.dayCellSelected,
-                                isToday && !isSelected && styles.dayCellToday
+                                isToday && !isSelected && styles.dayCellToday,
+                                isDisabled && styles.dayCellDisabled
                             ]}
-                            onPress={() => onSelect({
-                                date: date,
-                                label: `${date.getMonth() + 1}月${date.getDate()}日`,
-                                dayName: ['週日', '週一', '週二', '週三', '週四', '週五', '週六'][date.getDay()],
-                                fullDate: dateStr
-                            })}
+                            onPress={() => {
+                                if (!isDisabled) {
+                                    onSelect({
+                                        date: date,
+                                        label: `${date.getMonth() + 1}月${date.getDate()}日`,
+                                        dayName: ['週日', '週一', '週二', '週三', '週四', '週五', '週六'][date.getDay()],
+                                        fullDate: dateStr
+                                    });
+                                }
+                            }}
+                            disabled={isDisabled}
                         >
                             <Text style={[
                                 styles.dayText,
                                 isSelected && styles.dayTextSelected,
-                                isToday && !isSelected && styles.dayTextToday
+                                isToday && !isSelected && styles.dayTextToday,
+                                isDisabled && styles.dayTextDisabled
                             ]}>
                                 {date.getDate()}
                             </Text>
@@ -491,6 +505,12 @@ const styles = StyleSheet.create({
     dayTextToday: {
         color: Colors.light.tint,
         fontWeight: 'bold'
+    },
+    dayCellDisabled: {
+        opacity: 0.3
+    },
+    dayTextDisabled: {
+        color: '#CBD5E1'
     },
 
     // Notice
